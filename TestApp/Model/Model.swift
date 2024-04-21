@@ -6,17 +6,18 @@
 //
 
 import Foundation
+import RealmSwift
 
-struct AlbumsModel : Codable {
-    let userId: Int
-    let id: Int
-    let title: String
+class AlbumsModel : Object, Codable {
+    @objc dynamic var userId: Int = 0
+    @objc dynamic var id: Int = 0
+    @objc dynamic var title: String = ""
 }
 
-struct PhotoModel: Codable {
-    let albumId: Int
-    let id: Int
-    let title: String
-    let url: String
-    let thumbnailUrl: String
+class PhotoModel: Object, Codable {
+    @objc dynamic var albumId: Int = 0
+    @objc  dynamic var id: Int = 0
+    @objc dynamic var title: String = ""
+    @objc  dynamic var url: String = ""
+    @objc dynamic var thumbnailUrl: String = ""
 }

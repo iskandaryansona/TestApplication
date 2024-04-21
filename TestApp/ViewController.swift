@@ -12,8 +12,12 @@ final class ViewController: UIViewController {
     @IBOutlet weak var photoTableView: UITableView!
     
     var albumList: [AlbumsModel] = []
+    
     var photos: [Int: [PhotoModel]] = [:]
     var vm: ViewModel = ViewModel()
+    
+
+    var totalElements = 0
     
     
     override func viewDidLoad() {
@@ -23,16 +27,29 @@ final class ViewController: UIViewController {
     }
     
     private func bindingViewModel(){
-        vm.fetchAlbums {[weak self] data in
-            self?.getData(data: data)
+        albumList = RealmManager.shared.getSavedAlbums()
+        totalElements = albumList.count
+        if albumList.isEmpty {
+            vm.fetchAlbums {[weak self] data in
+                DispatchQueue.main.async {
+                    self?.albumList = data
+                    self?.getPhotos()
+                }
+            }
+        }else{
+            let localPhotos = RealmManager.shared.getSavedPhotos()
+            
+            if localPhotos.isEmpty {
+                getPhotos()
+            }else{
+                for album in localPhotos {
+                    photos[album.albumId] = Array(album.photos)
+                }
+                updateTableView()
+            }
         }
     }
     
-    private func getData(data: [AlbumsModel]){
-        albumList = data
-        updateTableView()
-        getPhotos()
-    }
     
     private func updateTableView(){
         DispatchQueue.main.async {
@@ -42,12 +59,15 @@ final class ViewController: UIViewController {
     
     private func getPhotos(){
         let group = DispatchGroup()
+        
         for alb in albumList {
             group.enter()
             
             vm.fetchPhotos(albumId: alb.id) { [weak self] data in
                 guard let self = self else { return }
-                self.photos[alb.id] = data
+                DispatchQueue.main.async {
+                    self.photos[alb.id] = data
+                }
                 group.leave()
             }
         }
@@ -66,17 +86,18 @@ extension ViewController: UITableViewDelegate, UITableViewDataSource {
     }
     
     func numberOfSections(in tableView: UITableView) -> Int {
-        return albumList.count
+                return totalElements
     }
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = photoTableView.dequeueReusableCell(withIdentifier: "CustomCell", for: indexPath) as! CustomCell
-        cell.configUI(photo: photos[albumList[indexPath.section].id] ?? [])
+        cell.configUI(photo: photos[albumList[indexPath.section % albumList.count].id] ?? [])
         return cell
     }
     
     func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
-        return albumList[section].title
+        let currentCell = section % albumList.count
+        return albumList[currentCell].title
     }
     
     func tableView(_ tableView: UITableView, heightForHeaderInSection section: Int) -> CGFloat {
@@ -85,5 +106,19 @@ extension ViewController: UITableViewDelegate, UITableViewDataSource {
     
     func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
         return 75
+    }
+}
+
+extension ViewController: UIScrollViewDelegate{
+    func scrollViewDidScroll(_ scrollView: UIScrollView) {
+        // Calculate the index path of the last visible cell
+        guard let lastVisibleIndexPath = photoTableView.indexPathsForVisibleRows?.last else {
+            return
+        }
+        
+        if lastVisibleIndexPath.section == totalElements - 1 {
+            totalElements +=  albumList.count
+            photoTableView.reloadData()
+        }
     }
 }
