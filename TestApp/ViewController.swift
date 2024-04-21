@@ -13,7 +13,7 @@ final class ViewController: UIViewController {
     
     var albumList: [AlbumsModel] = []
     var photos: [Int: [PhotoModel]] = [:]
-    var vm: AlbumViewModel = AlbumViewModel()
+    var vm: ViewModel = ViewModel()
     
     
     override func viewDidLoad() {
@@ -24,14 +24,37 @@ final class ViewController: UIViewController {
     
     private func bindingViewModel(){
         vm.fetchAlbums {[weak self] data in
-            self?.update(data: data)
+            self?.getData(data: data)
         }
     }
     
-    private func update(data: [AlbumsModel]){
+    private func getData(data: [AlbumsModel]){
         albumList = data
+        updateTableView()
+        getPhotos()
+    }
+    
+    private func updateTableView(){
         DispatchQueue.main.async {
             self.photoTableView.reloadData()
+        }
+    }
+    
+    private func getPhotos(){
+        let group = DispatchGroup()
+        for alb in albumList {
+            group.enter()
+            
+            vm.fetchPhotos(albumId: alb.id) { [weak self] data in
+                guard let self = self else { return }
+                self.photos[alb.id] = data
+                group.leave()
+            }
+        }
+        
+        group.notify(queue: .main) { [weak self] in
+            guard let self = self else { return }
+            self.updateTableView()
         }
     }
 }
