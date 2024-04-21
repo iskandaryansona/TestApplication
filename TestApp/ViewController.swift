@@ -33,6 +33,7 @@ final class ViewController: UIViewController {
             vm.fetchAlbums {[weak self] data in
                 DispatchQueue.main.async {
                     self?.albumList = data
+                    self?.totalElements = data.count
                     self?.getPhotos()
                 }
             }
